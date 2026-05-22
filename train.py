@@ -84,7 +84,7 @@ if __name__ == "__main__":
     if args.start_checkpoint:
         (model_params, gauss_params, first_iter) = _load_training_checkpoint(args.start_checkpoint)
         DeformModel.restore(model_params)
-        gaussians.restore(gauss_params, opt)
+        gaussians.restore(gauss_params, opt, device=args.device)
 
     bg_color = [1, 1, 1] if lpt.white_background else [0, 1, 0]
     background = torch.tensor(bg_color, dtype=torch.float32, device=args.device)

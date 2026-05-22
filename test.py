@@ -27,8 +27,10 @@ def set_random_seed(seed):
     torch.cuda.manual_seed_all(seed)
 
 
-def _load_training_checkpoint(path, map_location="cpu"):
+def _load_training_checkpoint(path, map_location=None):
     """Load training checkpoint across torch serialization defaults."""
+    if map_location is None:
+        map_location = "cuda" if torch.cuda.is_available() else "cpu"
     try:
         return torch.load(path, map_location=map_location, weights_only=False)
     except TypeError:
@@ -78,7 +80,7 @@ if __name__ == "__main__":
     if args.checkpoint:
         (model_params, gauss_params, first_iter) = _load_training_checkpoint(args.checkpoint)
         DeformModel.restore(model_params)
-        gaussians.restore(gauss_params, opt)
+        gaussians.restore(gauss_params, opt, device=args.device)
 
     bg_color = [1, 1, 1] if lpt.white_background else [0, 1, 0]
     background = torch.tensor(bg_color, dtype=torch.float32, device=args.device)

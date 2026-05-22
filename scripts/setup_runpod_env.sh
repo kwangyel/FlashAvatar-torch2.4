@@ -8,8 +8,7 @@ cd "$ROOT_DIR"
 python -m pip install -U pip setuptools wheel
 
 # Install torch 2.4 CUDA 12.4 build.
-python -m pip install --index-url https://download.pytorch.org/whl/cu124 \
-  torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1
+# python -m pip install --index-url https://download.pytorch.org/whl/cu124 torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1
 
 # User-requested PyTorch3D installation path.
 python -m pip install --no-build-isolation "git+https://github.com/facebookresearch/pytorch3d.git@stable"

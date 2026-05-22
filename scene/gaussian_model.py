@@ -76,7 +76,30 @@ class GaussianModel:
             self.spatial_lr_scale,
         )
     
-    def restore(self, model_args, training_args):
+    @staticmethod
+    def _tensor_to_device(tensor, device):
+        if isinstance(tensor, nn.Parameter):
+            return nn.Parameter(tensor.data.to(device), requires_grad=tensor.requires_grad)
+        return tensor.to(device)
+
+    def move_to_device(self, device):
+        """Move checkpoint-restored tensors to the compute device."""
+        self._xyz = self._tensor_to_device(self._xyz, device)
+        self._features_dc = self._tensor_to_device(self._features_dc, device)
+        self._features_rest = self._tensor_to_device(self._features_rest, device)
+        self._scaling_base = self._tensor_to_device(self._scaling_base, device)
+        self._rotation_base = self._tensor_to_device(self._rotation_base, device)
+        self._opacity = self._tensor_to_device(self._opacity, device)
+        self._rotation = self._rotation_base
+        self._scaling = self._scaling_base
+        if self.max_radii2D.numel() > 0:
+            self.max_radii2D = self.max_radii2D.to(device)
+        if self.xyz_gradient_accum.numel() > 0:
+            self.xyz_gradient_accum = self.xyz_gradient_accum.to(device)
+        if self.denom.numel() > 0:
+            self.denom = self.denom.to(device)
+
+    def restore(self, model_args, training_args, device=None):
         (self.active_sh_degree, 
         self._xyz, 
         self._features_dc, 
@@ -89,9 +112,11 @@ class GaussianModel:
         denom,
         opt_dict, 
         self.spatial_lr_scale) = model_args
+        if device is not None:
+            self.move_to_device(device)
         self.training_setup(training_args)
-        self.xyz_gradient_accum = xyz_gradient_accum
-        self.denom = denom
+        self.xyz_gradient_accum = xyz_gradient_accum.to(device) if device is not None else xyz_gradient_accum
+        self.denom = denom.to(device) if device is not None else denom
         self.optimizer.load_state_dict(opt_dict)
 
     @property
@@ -146,9 +171,10 @@ class GaussianModel:
         self.max_radii2D = torch.zeros((self.get_xyz.shape[0]), device="cuda")
     
     def update_xyz_rot_scale(self, points, rot_delta, scale_coeff):
-        self._xyz = points
-        self._rotation = quatProduct_batch(self._rotation_base, rot_delta)
-        self._scaling = self._scaling_base * scale_coeff
+        device = self._rotation_base.device
+        self._xyz = points.to(device)
+        self._rotation = quatProduct_batch(self._rotation_base, rot_delta.to(device))
+        self._scaling = self._scaling_base * scale_coeff.to(device)
 
     def update_sh(self, Dmodel):
         # self._features_dc = torch.rand_like(self._features_dc)
