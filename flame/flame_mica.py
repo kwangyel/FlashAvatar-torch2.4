@@ -16,8 +16,37 @@
 
 import os
 import pickle
+import inspect
+import warnings
+from collections import namedtuple
+
+# chumpy (required to unpickle official FLAME generic_model.pkl) still calls
+# inspect.getargspec, removed in Python 3.11.
+if not hasattr(inspect, "getargspec"):
+    _ArgSpec = namedtuple("_ArgSpec", ("args", "varargs", "keywords", "defaults"))
+
+    def _getargspec(func):  # type: ignore[no-untyped-def]
+        fs = inspect.getfullargspec(func)
+        return _ArgSpec(fs.args, fs.varargs, fs.varkw, fs.defaults)
+
+    inspect.getargspec = _getargspec  # type: ignore[attr-defined]
 
 import numpy as np
+# chumpy (used when unpickling official FLAME generic_model.pkl) imports legacy
+# numpy aliases removed in numpy>=2.0. Recreate them for runtime compatibility.
+_NUMPY_LEGACY_ALIASES = {
+    "bool": bool,
+    "int": int,
+    "float": float,
+    "complex": complex,
+    "object": object,
+    "str": str,
+    "unicode": str,
+}
+for _name, _alias in _NUMPY_LEGACY_ALIASES.items():
+    if not hasattr(np, _name):
+        setattr(np, _name, _alias)
+
 # Modified from smplx code for FLAME
 import torch
 import torch.nn as nn
@@ -68,7 +97,11 @@ class FLAME_mica(nn.Module):
         super(FLAME_mica, self).__init__()
         logger.info(f"[FLAME] Creating the 3DMM from {config.flame_geom_path}")
         with open(config.flame_geom_path, 'rb') as f:
-            ss = pickle.load(f, encoding='latin1')
+            with warnings.catch_warnings():
+                wcat = getattr(np, "VisibleDeprecationWarning", DeprecationWarning)
+                warnings.simplefilter("ignore", category=wcat)
+                warnings.simplefilter("ignore", category=FutureWarning)
+                ss = pickle.load(f, encoding='latin1')
             flame_model = Struct(**ss)
 
         self.dtype = torch.float32

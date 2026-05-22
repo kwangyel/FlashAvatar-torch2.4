@@ -22,6 +22,32 @@ conda install -c fvcore -c iopath -c conda-forge fvcore iopath
 conda install -c bottler nvidiacub
 conda install pytorch3d -c pytorch3d
 ```
+
+### RunPod (pip, Python 3.11, Torch 2.4 / CUDA 12.4)
+
+For RunPod GPU instances, use a pip-only workflow (no conda required):
+
+```bash
+git submodule update --init --recursive
+python -m pip install -U pip setuptools wheel
+python -m pip install --index-url https://download.pytorch.org/whl/cu124 \
+  torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1
+python -m pip install --no-build-isolation "git+https://github.com/facebookresearch/pytorch3d.git@stable"
+python -m pip install --no-build-isolation -r requirements-runpod.txt
+python -m pip install --no-build-isolation -e submodules/simple-knn
+python -m pip install --no-build-isolation -e submodules/diff-gaussian-rasterization
+python scripts/verify_cuda_extensions.py
+```
+
+Equivalent one-shot setup:
+
+```bash
+bash scripts/setup_runpod_env.sh
+```
+
+Notes:
+- `environment.yml` remains available for the legacy conda flow.
+- If extension build fails, inspect the first `nvcc` error and verify torch CUDA build and host driver compatibility.
 ## Data Convention
 The data is organized in the following form：
 ```

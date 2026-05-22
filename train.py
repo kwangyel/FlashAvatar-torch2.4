@@ -28,6 +28,15 @@ def set_random_seed(seed):
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
+
+def _load_training_checkpoint(path, map_location="cpu"):
+    """Load training checkpoint across torch serialization defaults."""
+    try:
+        return torch.load(path, map_location=map_location, weights_only=False)
+    except TypeError:
+        return torch.load(path, map_location=map_location)
+
+
 if __name__ == "__main__":
     # Set up command line argument parser
     parser = argparse.ArgumentParser(description="Training script parameters")
@@ -40,6 +49,11 @@ if __name__ == "__main__":
     parser.add_argument("--start_checkpoint", type=str, default = None)
     args = parser.parse_args(sys.argv[1:])
     args.device = "cuda"
+    if not torch.cuda.is_available():
+        raise RuntimeError(
+            "CUDA is required for FlashAvatar training. "
+            "On RunPod, select a GPU pod and confirm `torch.cuda.is_available()` is True."
+        )
     lpt = lp.extract(args)
     opt = op.extract(args)
     ppt = pp.extract(args)
@@ -68,7 +82,7 @@ if __name__ == "__main__":
     gaussians = GaussianModel(lpt.sh_degree)
     gaussians.training_setup(opt)
     if args.start_checkpoint:
-        (model_params, gauss_params, first_iter) = torch.load(args.start_checkpoint)
+        (model_params, gauss_params, first_iter) = _load_training_checkpoint(args.start_checkpoint)
         DeformModel.restore(model_params)
         gaussians.restore(gauss_params, opt)
 

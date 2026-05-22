@@ -14,6 +14,15 @@ from utils.general_utils import PILtoTensor
 from utils.graphics_utils import focal2fov
 
 
+def _torch_load_frame(path, map_location="cpu"):
+    """Load MICA/FLAME frame checkpoints across torch serialization defaults."""
+    try:
+        return torch.load(path, map_location=map_location, weights_only=False)
+    except TypeError:
+        # Older torch versions do not support weights_only.
+        return torch.load(path, map_location=map_location)
+
+
 class Scene_mica:
     def __init__(self, datadir, mica_datadir, train_type, white_background, device):
         ## train_type: 0 for train, 1 for test, 2 for eval
@@ -36,7 +45,7 @@ class Scene_mica:
         max_train_num = 10000
         train_num = min(max_train_num, self.N_frames - test_num)
         ckpt_path = os.path.join(mica_ckpt_dir, '00000.frame')
-        payload = torch.load(ckpt_path)
+        payload = _torch_load_frame(ckpt_path)
         flame_params = payload['flame']
         self.shape_param = torch.as_tensor(flame_params['shape'])
         orig_w, orig_h = payload['img_size']
@@ -59,7 +68,7 @@ class Scene_mica:
             image_name_mica = str(frame_id).zfill(5) # obey mica tracking
             image_name_ori = str(frame_id+frame_delta).zfill(5)
             ckpt_path = os.path.join(mica_ckpt_dir, image_name_mica+'.frame')
-            payload = torch.load(ckpt_path)
+            payload = _torch_load_frame(ckpt_path)
             
             flame_params = payload['flame']
             exp_param = torch.as_tensor(flame_params['exp'])
