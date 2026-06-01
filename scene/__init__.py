@@ -115,6 +115,67 @@ class Scene_mica:
         return self.cameras
 
 
+class Scene_frames:
+    """Load cameras from MICA .frame checkpoints only (no dataset images)."""
+
+    def __init__(self, frames_dir, device):
+        frame_paths = sorted(
+            os.path.join(frames_dir, name)
+            for name in os.listdir(frames_dir)
+            if name.endswith(".frame")
+        )
+        if not frame_paths:
+            raise FileNotFoundError(f"No .frame files found in {frames_dir}")
+
+        self.cameras = []
+        first_payload = _torch_load_frame(frame_paths[0])
+        flame_params = first_payload["flame"]
+        self.shape_param = torch.as_tensor(flame_params["shape"])
+        orig_w, orig_h = first_payload["img_size"]
+        K = first_payload["opencv"]["K"][0]
+        fl_x = K[0, 0]
+        fl_y = K[1, 1]
+        FovY = focal2fov(fl_y, orig_h)
+        FovX = focal2fov(fl_x, orig_w)
+        dummy_image = torch.zeros((3, orig_h, orig_w))
+        dummy_mask = torch.zeros((3, orig_h, orig_w))
+
+        for frame_id, ckpt_path in enumerate(tqdm(frame_paths, desc="Loading frames")):
+            payload = _torch_load_frame(ckpt_path)
+            flame_params = payload["flame"]
+            exp_param = torch.as_tensor(flame_params["exp"])
+            eyes_pose = torch.as_tensor(flame_params["eyes"])
+            eyelids = torch.as_tensor(flame_params["eyelids"])
+            jaw_pose = torch.as_tensor(flame_params["jaw"])
+
+            opencv = payload["opencv"]
+            w2cR = opencv["R"][0]
+            w2cT = opencv["t"][0]
+            R = np.transpose(w2cR)
+            T = w2cT
+
+            image_name = os.path.splitext(os.path.basename(ckpt_path))[0]
+            camera_indiv = Camera(
+                colmap_id=frame_id,
+                R=R,
+                T=T,
+                FoVx=FovX,
+                FoVy=FovY,
+                image=dummy_image,
+                head_mask=dummy_mask,
+                mouth_mask=dummy_mask,
+                exp_param=exp_param,
+                eyes_pose=eyes_pose,
+                eyelids=eyelids,
+                jaw_pose=jaw_pose,
+                image_name=image_name,
+                uid=frame_id,
+                data_device=device,
+            )
+            self.cameras.append(camera_indiv)
+
+    def getCameras(self):
+        return self.cameras
 
 
 
