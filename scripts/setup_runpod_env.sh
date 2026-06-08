@@ -23,8 +23,8 @@ mkdir -p FLAME2020
 mkdir -p FLAME_masks
 
 unzip -d kinley.zip -q ./kinley
-unzip -d FLAME2020.zip -q ./FLAME2020
-unzip -d FLAME_masks.zip -q ./FLAME_masks
+unzip -q FLAME2020.zip -d ./FLAME2020
+unzip -q FLAME_masks.zip -d ./FLAME_masks
 
 mv kinley/kinley/dataset dataset
 mv kinley/kinley/metrical-tracker metrical-tracker
