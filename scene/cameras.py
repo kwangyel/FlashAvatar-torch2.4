@@ -37,15 +37,18 @@ class Camera(nn.Module):
             print(f"[Warning] Custom device {data_device} failed, fallback to default cuda device" )
             self.data_device = torch.device("cuda")
 
-        self.original_image = image.clamp(0.0, 1.0).to(self.data_device)
-        self.image_width = self.original_image.shape[2]
-        self.image_height = self.original_image.shape[1]
-        self.head_mask = head_mask.to(self.data_device)
-        self.mouth_mask = mouth_mask.to(self.data_device)
-        self.exp_param = exp_param.to(self.data_device)
-        self.eyes_pose = eyes_pose.to(self.data_device)
-        self.eyelids = eyelids.to(self.data_device)
-        self.jaw_pose = jaw_pose.to(self.data_device)
+        # Store all per-frame data on CPU to avoid exhausting GPU VRAM when
+        # thousands of cameras are loaded at once. Tensors are moved to the
+        # target device lazily via the properties below.
+        self._original_image = image.clamp(0.0, 1.0)
+        self.image_width = self._original_image.shape[2]
+        self.image_height = self._original_image.shape[1]
+        self._head_mask = head_mask
+        self._mouth_mask = mouth_mask
+        self._exp_param = exp_param
+        self._eyes_pose = eyes_pose
+        self._eyelids = eyelids
+        self._jaw_pose = jaw_pose
 
         self.zfar = 100.0
         self.znear = 0.01
@@ -57,6 +60,34 @@ class Camera(nn.Module):
         self.projection_matrix = getProjectionMatrix(znear=self.znear, zfar=self.zfar, fovX=self.FoVx, fovY=self.FoVy).transpose(0,1).cuda()
         self.full_proj_transform = (self.world_view_transform.unsqueeze(0).bmm(self.projection_matrix.unsqueeze(0))).squeeze(0)
         self.camera_center = self.world_view_transform.inverse()[3, :3]
+
+    @property
+    def original_image(self):
+        return self._original_image.to(self.data_device)
+
+    @property
+    def head_mask(self):
+        return self._head_mask.to(self.data_device)
+
+    @property
+    def mouth_mask(self):
+        return self._mouth_mask.to(self.data_device)
+
+    @property
+    def exp_param(self):
+        return self._exp_param.to(self.data_device)
+
+    @property
+    def eyes_pose(self):
+        return self._eyes_pose.to(self.data_device)
+
+    @property
+    def eyelids(self):
+        return self._eyelids.to(self.data_device)
+
+    @property
+    def jaw_pose(self):
+        return self._jaw_pose.to(self.data_device)
 
 class MiniCam:
     def __init__(self, width, height, fovy, fovx, znear, zfar, world_view_transform, full_proj_transform):
