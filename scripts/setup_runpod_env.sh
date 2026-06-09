@@ -33,7 +33,16 @@ unzip -q FLAME_masks.zip -d ./FLAME_masks
 tar -xzf masks.tar.gz -C ./masks
 tar -xzf dataset.tar.gz -C ./dataset
 unzip -q metrical-tracker.zip -d ./metrical-tracker
+
 mkdir -p flame/FLAME_masks
+
+
+mv dataset/dataset/* dataset/
+rm -rf dataset/dataset
+
+rm -rf dataset/Obama/alpha
+mv masks/masks/ dataset/Obama/alpha
+mv metrical-tracker/metrical-tracker/* metrical-tracker/
 
 mv FLAME2020/FLAME2020/generic_model.pkl flame/generic_model.pkl
 mv FLAME_masks/FLAME_masks.pkl flame/FLAME_masks/FLAME_masks.pkl
@@ -47,8 +56,7 @@ pip install yacs
 python scripts/verify_cuda_extensions.py
 
 # for renaminig the dataset since i messed up on the name of the dataset
-cd ~/FlashAvatar-torch2.4/dataset/Obama/parsing
+cd dataset/Obama/parsing
 # actually rename
 for f in *_headneck.png; do mv "$f" "${f/_headneck/_neckhead}"; done
 
-cd ~/FlashAvatar-torch2.4
